@@ -7,55 +7,55 @@ const works = [
   {
     id: 1,
     category: 'Portraits',
-    image: '/3.jpg',
+    image: '/p1.jpg',
     title: 'Essence of Thought'
   },
   {
     id: 2,
     category: 'Street',
-    image: '/4.jpg',
+    image: '/p2.jpg',
     title: 'Urban Pulse'
   },
   {
     id: 3,
     category: 'Emotions',
-    image: '/6.jpg',
+    image: '/p3.jpg',
     title: 'Muted Whispers'
   },
   {
     id: 4,
     category: 'Abstract',
-    image: '/Untitled design.png',
+    image: '/p4.png',
     title: 'Shadow Geometry'
   },
   {
     id: 5,
     category: 'Portraits',
-    image: '/@Capturewith_suryanshh.jpg',
+    image: '/hero.jpg',
     title: 'The Gaze'
   },
   {
     id: 6,
     category: 'Street',
-    image: '/IMG_20260119_203633_289.jpg',
+    image: '/p6.jpg',
     title: 'Night Walk'
   },
   {
     id: 7,
     category: 'Emotions',
-    image: '/IMG_20260313_132629_521.jpg',
+    image: '/featured.jpg',
     title: 'Soul Reflection'
   },
   {
     id: 8,
     category: 'Abstract',
-    image: '/Untitled design_20251227_144700_0000.png',
+    image: '/p8.png',
     title: 'Monochrome Flow'
   },
   {
     id: 9,
     category: 'Portraits',
-    image: '/IMG_20260313_132629_550.jpg',
+    image: '/p9.jpg',
     title: 'Eternal Pose'
   }
 ];

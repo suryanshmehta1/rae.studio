@@ -19,7 +19,7 @@ export default function About() {
                 alt="Founder of Rae Studio"
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/IMG_20260313_132629_550.jpg";
+                  (e.target as HTMLImageElement).src = "/p9.jpg";
                 }}
               />
             </div>

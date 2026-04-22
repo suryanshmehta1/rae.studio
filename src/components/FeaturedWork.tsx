@@ -20,7 +20,7 @@ export default function FeaturedWork() {
         >
           <motion.img 
             style={{ scale }}
-            src="/IMG_20260313_132629_521.jpg" 
+            src="/featured.jpg" 
             alt="Cinematic Masterpiece"
             className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-1000"
           />

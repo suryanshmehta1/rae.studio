@@ -8,7 +8,7 @@ export default function Hero() {
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-1000 scale-105"
         style={{
-          backgroundImage: 'url("/@Capturewith_suryanshh.jpg")',
+          backgroundImage: 'url("/hero.jpg")',
           filter: 'grayscale(100%) brightness(0.4)'
         }}
       />
