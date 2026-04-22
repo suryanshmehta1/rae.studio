@@ -13,9 +13,14 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: "GEMINI_API_KEY is not defined on the server." });
     }
 
-    const genAI = new GoogleGenAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-3-flash-preview",
+    const genAI = new GoogleGenAI({ apiKey: apiKey });
+    const response = await genAI.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        ...history,
+        { role: 'user', parts: [{ text: message }] }
+      ],
+      config: {
         systemInstruction: `
           You are Rae, the friendly AI assistant for Rae Studio. Your job is to help people learn about what we do.
           
@@ -35,20 +40,13 @@ export default async function handler(req: any, res: any) {
           - Keep your answers short and sweet (under 50 words).
           
           Stay friendly and keep it simple!
-        `
-    });
-
-    const chat = model.startChat({
-      history: history,
-      generationConfig: {
+        `,
         temperature: 0.7,
         topP: 0.95,
-      },
+      }
     });
 
-    const result = await chat.sendMessage(message);
-    const response = await result.response;
-    res.status(200).json({ text: response.text() });
+    res.status(200).json({ text: response.text });
   } catch (error) {
     console.error("Gemini API Error:", error);
     res.status(500).json({ error: "Failed to communicate with AI." });
