@@ -59,6 +59,7 @@ export default function About() {
                 src="/@Capturewith_suryanshh.jpg" 
                 alt="Suryansh Mehta - Creative Artist"
                 referrerPolicy="no-referrer"
+                loading="lazy"
                 className="absolute inset-0 w-full h-full object-cover transition-all duration-1000 grayscale group-hover:grayscale-0 group-hover:scale-105"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "/founder.jpg";
@@ -116,6 +117,7 @@ export default function About() {
                 src="/khushm.png" 
                 alt="Khush Mehta"
                 referrerPolicy="no-referrer"
+                loading="lazy"
                 className="absolute inset-0 w-full h-full object-cover transition-all duration-1000 grayscale group-hover:grayscale-0 group-hover:scale-105"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "/IMG_20260119_203633_289.jpg";

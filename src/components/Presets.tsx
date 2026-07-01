@@ -320,6 +320,7 @@ export default function Presets() {
                         <img 
                           src={file.preview} 
                           alt="Preset Preview" 
+                          loading="lazy"
                           className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-1000"
                         />
                       ) : (

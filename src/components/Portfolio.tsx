@@ -160,6 +160,7 @@ export default function Portfolio() {
                     <img 
                       src={work.image} 
                       alt={work.title}
+                      loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale-[100%] group-hover:grayscale-0"
                     />
                     <div className="absolute inset-0 bg-brand-black/0 group-hover:bg-brand-black/40 transition-colors duration-500" />

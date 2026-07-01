@@ -14,7 +14,11 @@ interface Message {
 const KNOWLEDGE_BASE = [
   { keywords: ['who', 'founder', 'suryansh', 'owner', 'mehta'], response: "Rae Studio was founded by Suryansh Mehta. He's a visionary photographer known for high-contrast, luxury cinematic visuals." },
   { keywords: ['preset', 'dng', 'laboratory', 'download', 'edit', 'mobile'], response: "Our 'Presets Laboratory' offers exclusive DNG files that give your photos a professional, cinematic look. You can find them in the Laboratory section!" },
-  { keywords: ['book', 'contact', 'hire', 'service', 'price', 'email'], response: "For bookings and inquiries, you can reach out directly via email at raestudioo1@gmail.com or use the contact form on our website." },
+  { 
+    keywords: ['price', 'charge', 'cost', 'rate', 'website', 'shoot', 'basic', 'advance', 'custom', 'package', 'fees'], 
+    response: "Here are our rates:\n\n• Basic Website: ₹3000+ (depends on the domain the client wants)\n• Advanced Website: ₹5000+ (depends on the domain the client wants)\n• Basic Photo Shoot: ₹899\n• Custom Shoot Package: Please inquire through WhatsApp for a custom package here: https://wa.me/919928974000?text=Hi%20Rae%20Studio!%20I%20would%20like%20to%20inquire%20about%20a%20custom%20photo%20shoot%20package." 
+  },
+  { keywords: ['book', 'contact', 'hire', 'service', 'email'], response: "For bookings and inquiries, you can reach out directly via email at raestudioo1@gmail.com, use the contact form, or connect with us on WhatsApp!" },
   { keywords: ['style', 'look', 'creative', 'photography', 'black', 'white'], response: "We specialize in cinematic, high-contrast, and luxury aesthetics, often focusing on monochrome and minimal color palettes to tell deeper stories." },
   { keywords: ['where', 'located', 'studio', 'place'], response: "We are a creative studio operating globally, with a focus on delivering high-end visual stories for brands and individuals." },
   { keywords: ['what', 'do', 'offer', 'work'], response: "We offer professional photography services (portraits, commercial, street) and exclusive digital assets for photographers through our Laboratory." },
@@ -30,6 +34,27 @@ const getOfflineResponse = (input: string) => {
     }
   }
   return "That's an interesting perspective. While I might not have a specific detail on that right now, Suryansh's work is all about finding depth in the unseen. Would you like to know about our presets or how to book a session?";
+};
+
+const renderMessageContent = (content: string) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = content.split(urlRegex);
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand-red font-bold hover:underline transition-all inline-flex items-center gap-1 break-all"
+        >
+          {part.includes('wa.me') ? 'WhatsApp Inquiry Link ↗' : part}
+        </a>
+      );
+    }
+    return part;
+  });
 };
 
 export default function Chatbot() {
@@ -90,7 +115,7 @@ export default function Chatbot() {
             { role: 'user', parts: [{ text: query }] }
           ],
           config: {
-            systemInstruction: "You are Rae, the cinematic AI assistant for Rae Studio. The studio was founded by Suryansh Mehta and is named after his best friend Rashi (Rae). Rashi used to playfully ask 'Sabse sundar kaun? Rashi sabse sundar.' Keep responses under 60 words, be mysterious, cinematic, and helpful. Use a dash of luxury and raw emotion in your tone.",
+            systemInstruction: "You are Rae, the cinematic AI assistant for Rae Studio. The studio was founded by Suryansh Mehta and is named after his best friend Rashi (Rae). Rashi used to playfully ask 'Sabse sundar kaun? Rashi sabse sundar.' PRICING & SERVICES (Strict adherence required): For a basic website, the price is '₹3000 plus (depends on the domain the client wants)'. For a slightly more advanced website than basic, the price is '₹5000 plus (depends on the domain the client wants)'. For a basic photo shoot, the price is '₹899'. For any custom shoot package, instruct them to send an inquiry through WhatsApp with an automatic written message using this link: https://wa.me/919928974000?text=Hi%20Rae%20Studio!%20I%20would%20like%20to%20inquire%20about%20a%20custom%20photo%20shoot%20package. Keep responses under 80 words, mysterious, cinematic, helpful, and luxury. Use raw emotion in your tone.",
             temperature: 0.7,
             topP: 0.95,
           }
@@ -195,12 +220,12 @@ export default function Chatbot() {
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
+                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                     msg.role === 'user' 
                       ? 'bg-brand-red text-brand-white rounded-tr-none shadow-lg shadow-brand-red/10' 
                       : 'bg-white/5 text-brand-grey rounded-tl-none border border-brand-white/5'
                   }`}>
-                    {msg.content}
+                    {renderMessageContent(msg.content)}
                   </div>
                 </motion.div>
               ))}
