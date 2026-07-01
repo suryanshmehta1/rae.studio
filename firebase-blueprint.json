@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "User contact inquiry",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Sender name" },
+        "email": { "type": "string", "format": "email", "description": "Sender email" },
+        "message": { "type": "string", "description": "Inquiry message" },
+        "date": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["name", "email", "message", "date"]
+    },
+    "Preset": {
+      "title": "Preset",
+      "description": "Photography preset metadata",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Filename" },
+        "size": { "type": "string", "description": "File size" },
+        "type": { "type": "string", "description": "File type (e.g. DNG)" },
+        "preview": { "type": "string", "description": "Preview image URL" },
+        "isNew": { "type": "boolean", "description": "New tag" }
+      },
+      "required": ["name", "size", "type"]
+    }
+  },
+  "firestore": {
+    "/inquiries/{inquiryId}": {
+      "schema": "Inquiry",
+      "description": "User inquiries"
+    },
+    "/presets/{presetId}": {
+      "schema": "Preset",
+      "description": "Photography presets"
+    },
+    "/admins/{userId}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" }
+        }
+      },
+      "description": "Admin whitelist"
+    }
+  }
+}

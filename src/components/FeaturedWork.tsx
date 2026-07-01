@@ -38,7 +38,7 @@ export default function FeaturedWork() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
-              className="text-5xl md:text-9xl font-black italic tracking-tighter"
+              className="text-5xl md:text-9xl font-black tracking-tighter"
             >
               Eternal <span className="text-brand-white">Elegance</span>
             </motion.h2>

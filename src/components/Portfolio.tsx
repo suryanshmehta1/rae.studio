@@ -1,9 +1,25 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const categories = ['All', 'Portraits', 'Street', 'Emotions', 'Abstract'];
+// @ts-ignore
+import dzewleryImg from '../assets/images/dzewlery_mockup_1782901390562.jpg';
+// @ts-ignore
+import gauravImg from '../assets/images/gaurav_chainani_mockup_1782901406334.jpg';
+// @ts-ignore
+import msgImg from '../assets/images/msg_distribution_mockup_1782901439137.jpg';
 
-const works = [
+interface WorkItem {
+  id: number;
+  category: string;
+  image: string;
+  title: string;
+  link?: string;
+  status?: string;
+}
+
+const categories = ['All', 'Portraits', 'Street', 'Emotions', 'Abstract', 'Web Design'];
+
+const works: WorkItem[] = [
   {
     id: 1,
     category: 'Portraits',
@@ -57,6 +73,35 @@ const works = [
     category: 'Portraits',
     image: '/p9.jpg',
     title: 'Eternal Pose'
+  },
+  {
+    id: 10,
+    category: 'Web Design',
+    image: 'https://image.thum.io/get/width/600/crop/800/maxAge/12/https://candidimagination.com',
+    title: 'candidimagination.com',
+    link: 'https://candidimagination.com',
+    status: 'Successfully Delivered'
+  },
+  {
+    id: 11,
+    category: 'Web Design',
+    image: dzewleryImg,
+    title: 'Dzewlery',
+    status: 'Successfully Delivered'
+  },
+  {
+    id: 12,
+    category: 'Web Design',
+    image: gauravImg,
+    title: 'Gaurav Chainani',
+    status: 'Successfully Delivered'
+  },
+  {
+    id: 14,
+    category: 'Web Design',
+    image: msgImg,
+    title: 'MSG Distribution System',
+    status: 'Successfully Delivered'
   }
 ];
 
@@ -94,30 +139,49 @@ export default function Portfolio() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         >
           <AnimatePresence mode="popLayout">
-            {filteredWorks.map((work) => (
-              <motion.div
-                key={work.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.5 }}
-                className="group relative aspect-[3/4] overflow-hidden cursor-pointer"
-              >
-                <img 
-                  src={work.image} 
-                  alt={work.title}
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale-[100%] group-hover:grayscale-0"
-                />
-                <div className="absolute inset-0 bg-brand-black/0 group-hover:bg-brand-black/40 transition-colors duration-500" />
-                
-                {/* Info Overlay */}
-                <div className="absolute bottom-6 left-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-brand-red font-bold mb-1 block">{work.category}</span>
-                  <h3 className="text-xl font-serif italic text-brand-white">{work.title}</h3>
-                </div>
-              </motion.div>
-            ))}
+            {filteredWorks.map((work) => {
+              const isWeb = work.category === 'Web Design';
+              const Comp = work.link ? 'a' : 'div';
+              
+              return (
+                <motion.div
+                  key={work.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.5 }}
+                  className="group relative aspect-[3/4] overflow-hidden cursor-pointer"
+                >
+                  <Comp
+                    {...(work.link ? { href: work.link, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    className="block w-full h-full relative"
+                  >
+                    <img 
+                      src={work.image} 
+                      alt={work.title}
+                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale-[100%] group-hover:grayscale-0"
+                    />
+                    <div className="absolute inset-0 bg-brand-black/0 group-hover:bg-brand-black/40 transition-colors duration-500" />
+                    
+                    {/* Info Overlay */}
+                    <div className="absolute bottom-6 left-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 z-10">
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-brand-red font-bold mb-1 block">
+                        {work.category} {work.status ? `• ${work.status}` : ''}
+                      </span>
+                      <h3 className="text-xl font-serif italic text-brand-white capitalize">
+                        {work.title}
+                      </h3>
+                      {work.link && (
+                        <span className="text-[9px] uppercase tracking-[0.15em] text-brand-red font-bold mt-2 block group-hover:underline">
+                          Visit Site →
+                        </span>
+                      )}
+                    </div>
+                  </Comp>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </motion.div>
       </div>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, Mail, ArrowRight, CheckCircle } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -10,28 +12,47 @@ export default function Contact() {
   });
   const [status, setStatus] = useState<'idle' | 'sending' | 'success'>('idle');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) return;
 
-    setStatus('sending');
+    setStatus('success');
 
-    // Automatically open mail client with pre-filled information
-    const subject = `Inquiry from ${formData.name} (Rae Studio)`;
-    const body = `Name: ${formData.name}%0D%0AEmail: ${formData.email}%0D%0A%0D%0AMessage:%0D%0A${formData.message}`;
-    const mailtoUrl = `mailto:raestudioo1@gmail.com?subject=${encodeURIComponent(subject)}&body=${body}`;
+    const timestamp = new Date().toISOString();
+    const inquiryData = { ...formData, date: timestamp };
 
-    // Simulate a brief "sending" delay for UX
+    // Background Saves
+    try {
+      // 1. Local Storage Backup (Immediate persistence)
+      const savedInquiries = JSON.parse(localStorage.getItem('rae_local_inquiries') || '[]');
+      localStorage.setItem('rae_local_inquiries', JSON.stringify([inquiryData, ...savedInquiries]));
+
+      // 2. Firebase Cloud Backup (Background - don't await to keep UI snappy)
+      addDoc(collection(db, 'inquiries'), inquiryData).catch(fbError => {
+        console.error('Firebase save failed in background:', fbError);
+        handleFirestoreError(fbError, OperationType.CREATE, 'inquiries');
+      });
+    } catch (e) {
+      console.warn('Silent failure during background operations:', e);
+    }
+
+    // 4. WhatsApp Redirection
+    const whatsappNumber = "919928974000";
+    const whatsappMessage = encodeURIComponent(
+      `*New Inquiry from Rae Studio Site*\n\n` +
+      `*Name:* ${formData.name}\n` +
+      `*Email:* ${formData.email}\n` +
+      `*Message:* ${formData.message}`
+    );
+    
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+    
+    // Auto-redirect or open
     setTimeout(() => {
-      window.location.href = mailtoUrl;
-      setStatus('success');
-      
-      // Reset form after a while
-      setTimeout(() => {
-        setStatus('idle');
-        setFormData({ name: '', email: '', message: '' });
-      }, 5000);
-    }, 800);
+      window.open(whatsappUrl, '_blank');
+      setStatus('idle');
+      setFormData({ name: '', email: '', message: '' });
+    }, 1000);
   };
   return (
     <section id="contact" className="py-24 md:py-40 bg-brand-black relative">
@@ -97,7 +118,7 @@ export default function Contact() {
                     </div>
                     <h3 className="text-3xl font-serif italic mb-4">Transmission Sent</h3>
                     <p className="text-brand-grey max-w-sm uppercase tracking-widest text-[10px]">
-                      Your story has been captured. If your email client didn't open automatically, please reach out directly to raestudioo1@gmail.com
+                      Your story has been captured and sent directly to our studio. We will get back to you shortly.
                     </p>
                     <button 
                       onClick={() => setStatus('idle')}

@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // Auth tokens never contain custom claims. Check a trusted collection.
+    function isAdmin() { 
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.uid == 'W8BVvXnZiYQ7l2GFm24AycZRcn22'
+      );
+    }
+
+    // --- Inquiries ---
+    match /inquiries/{inquiryId} {
+      allow create: if isValidInquiry(incoming());
+      allow read: if isAdmin();
+      allow delete, update: if isAdmin();
+    }
+
+    function isValidInquiry(data) {
+      return data.keys().hasAll(['name', 'email', 'message', 'date']) 
+        && data.keys().size() == 4
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 100
+        && data.message is string && data.message.size() <= 5000
+        && data.date is string;
+    }
+
+    // --- Presets ---
+    match /presets/{presetId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin() && isValidPreset(incoming());
+    }
+
+    function isValidPreset(data) {
+      return data.keys().hasAll(['name', 'size', 'type']) 
+        && data.keys().size() >= 3 && data.keys().size() <= 5
+        && data.name is string && data.name.size() <= 200
+        && data.size is string && data.size.size() <= 20
+        && data.type is string && data.type.size() <= 10
+        && (!data.keys().contains('preview') || (data.preview is string && data.preview.size() <= 1000))
+        && (!data.keys().contains('isNew') || data.isNew is bool);
+    }
+
+    // --- Admins ---
+    // This collection is only editable by other admins (or manually through Firebase Console initially)
+    match /admins/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false; // Only manageable through console for security
+    }
+  }
+}

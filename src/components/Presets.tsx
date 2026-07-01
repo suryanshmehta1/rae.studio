@@ -1,11 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, FileText, CheckCircle, Sliders, X, Lock, Unlock, Camera, Download } from 'lucide-react';
+import { Upload, CheckCircle, X, Lock, Unlock, Camera, Download } from 'lucide-react';
+import { collection, query, getDocs, addDoc, deleteDoc, doc, where, setDoc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 
 interface PresetFile {
   name: string;
   size: string;
   type: string;
+  preview?: string;
+  isNew?: boolean;
+  id?: string;
 }
 
 export default function Presets() {
@@ -13,25 +19,70 @@ export default function Presets() {
   const [showPasscode, setShowPasscode] = useState(false);
   const [passcode, setPasscode] = useState('');
   
-  // Initialize with localStorage or defaults
-  const [files, setFiles] = useState<PresetFile[]>(() => {
-    const saved = localStorage.getItem('rae_presets');
-    if (saved) return JSON.parse(saved);
-    return [
-      { name: 'cinematic_shadows.dng', size: '12.4 MB', type: 'DNG' },
-      { name: 'vintage_noir.dng', size: '8.2 MB', type: 'DNG' },
-      { name: 'golden_hour_vibe.dng', size: '15.1 MB', type: 'DNG' }
-    ];
-  });
+  const DEFAULT_PRESETS = [
+    { name: 'cinematic_shadows.dng', size: '12.4 MB', type: 'DNG', preview: '/p1.jpg' },
+    { name: 'vintage_noir.dng', size: '8.2 MB', type: 'DNG', preview: '/p3.jpg' },
+    { name: 'golden_hour_vibe.dng', size: '15.1 MB', type: 'DNG', preview: '/featured.jpg' }
+  ];
 
+  const [files, setFiles] = useState<PresetFile[]>(DEFAULT_PRESETS);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Persistence effect
-  React.useEffect(() => {
-    localStorage.setItem('rae_presets', JSON.stringify(files));
-  }, [files]);
+  // Sync admin status with Firebase Auth
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if (user.uid === 'W8BVvXnZiYQ7l2GFm24AycZRcn22') {
+          setIsAdmin(true);
+        } else {
+          try {
+            const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+            if (adminDoc.exists()) {
+              setIsAdmin(true);
+            }
+          } catch (e) {
+            console.warn('Admin check failed', e);
+          }
+        }
+      } else if (!localStorage.getItem('rae_passcode_unlocked')) {
+        setIsAdmin(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch presets on mount
+  useEffect(() => {
+    fetchFirestorePresets();
+  }, []);
+
+  const fetchFirestorePresets = async () => {
+    try {
+      const q = query(collection(db, 'presets'));
+      const querySnapshot = await getDocs(q);
+      const fbPresets = querySnapshot.docs.map(doc => ({ 
+        ...doc.data() as PresetFile, 
+        id: doc.id 
+      }));
+
+      if (fbPresets.length > 0) {
+        setFiles(fbPresets);
+        localStorage.setItem('rae_presets_backup', JSON.stringify(fbPresets));
+      } else {
+        setFiles(DEFAULT_PRESETS);
+      }
+    } catch (err) {
+      console.warn("Firestore fetch failed, using local backup:", err);
+      const saved = localStorage.getItem('rae_presets_backup');
+      if (saved) {
+        setFiles(JSON.parse(saved));
+      } else {
+        setFiles(DEFAULT_PRESETS);
+      }
+    }
+  };
 
   const formatTitle = (filename: string) => {
     return filename
@@ -45,6 +96,7 @@ export default function Presets() {
   const handleAdminToggle = () => {
     if (isAdmin) {
       setIsAdmin(false);
+      localStorage.removeItem('rae_passcode_unlocked');
     } else {
       setShowPasscode(true);
     }
@@ -52,10 +104,11 @@ export default function Presets() {
 
   const verifyPasscode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode === 'rae2026') {
+    if (passcode === 'rae2026' || passcode === 'rashisabsesunder@1') {
       setIsAdmin(true);
       setShowPasscode(false);
       setPasscode('');
+      localStorage.setItem('rae_passcode_unlocked', 'true');
     } else {
       alert('Unauthorized access attempt logged.');
       setPasscode('');
@@ -72,34 +125,45 @@ export default function Presets() {
     setIsDragging(false);
   };
 
-  const processFiles = (uploadedFiles: FileList | null) => {
+  const processFiles = async (uploadedFiles: FileList | null) => {
     if (!uploadedFiles || !isAdmin) return;
     
     setIsUploading(true);
     
-    // Process files immediately for UI response
-    const newFiles = Array.from(uploadedFiles)
+    const newFileMetadata = Array.from(uploadedFiles)
       .filter(file => file.name.toLowerCase().endsWith('.dng'))
       .map(file => ({
         name: file.name,
         size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
         type: 'DNG',
-        isNew: true // Added flag for a visual flair
+        isNew: true
       }));
     
-    if (newFiles.length === 0) {
+    if (newFileMetadata.length === 0) {
       alert("Please upload DNG files only.");
       setIsUploading(false);
       setIsDragging(false);
       return;
     }
 
-    // Small delay just for the "Developing" animation feel, then update state
-    setTimeout(() => {
-      setFiles(prev => [...newFiles, ...prev]);
+    try {
+      for (const preset of newFileMetadata) {
+        try {
+          await addDoc(collection(db, 'presets'), preset);
+        } catch (fbErr) {
+          handleFirestoreError(fbErr, OperationType.CREATE, 'presets');
+        }
+      }
+      await fetchFirestorePresets();
+    } catch (err) {
+      console.error("Save failed (Falling back to local):", err);
+      const updated = [...newFileMetadata, ...files];
+      setFiles(updated);
+      localStorage.setItem('rae_presets_backup', JSON.stringify(updated));
+    } finally {
       setIsUploading(false);
       setIsDragging(false);
-    }, 800);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -113,9 +177,19 @@ export default function Presets() {
     processFiles(e.target.files);
   };
 
-  const removeFile = (index: number) => {
+  const removeFile = async (preset: PresetFile) => {
     if (!isAdmin) return;
-    setFiles(prev => prev.filter((_, i) => i !== index));
+    try {
+      if (preset.id) {
+        await deleteDoc(doc(db, 'presets', preset.id));
+      }
+      await fetchFirestorePresets();
+    } catch (err) {
+      console.error("Delete failed (Attempting local-only):", err);
+      const updatedFiles = files.filter(p => p.name !== preset.name);
+      setFiles(updatedFiles);
+      localStorage.setItem('rae_presets_backup', JSON.stringify(updatedFiles));
+    }
   };
 
   return (
@@ -127,7 +201,7 @@ export default function Presets() {
           <div className="max-w-3xl">
             <span className="text-brand-red text-xs uppercase tracking-[0.4em] font-bold">The Laboratory</span>
             <div className="flex items-center gap-4 mt-4">
-              <h2 className="text-5xl md:text-7xl font-black italic">Visual Presets</h2>
+              <h2 className="text-5xl md:text-7xl font-black">Visual Presets</h2>
               <button 
                 onClick={handleAdminToggle}
                 className={`p-2 rounded-full transition-colors ${isAdmin ? 'text-brand-red bg-brand-red/10' : 'text-brand-grey/20 hover:text-brand-red'}`}
@@ -212,7 +286,7 @@ export default function Presets() {
                 )}
               </div>
               
-              <h3 className="text-xl font-serif italic mb-2">
+              <h3 className="text-xl font-serif mb-2">
                 {isUploading ? "Developing Presets..." : "Upload New Visual Preset"}
               </h3>
               <p className="text-brand-grey mb-6 uppercase tracking-widest text-[10px]">
@@ -241,8 +315,18 @@ export default function Presets() {
                 >
                   <div className="aspect-video bg-neutral-900 overflow-hidden relative">
                     {/* Placeholder for preset preview image */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                      <Camera size={48} className="text-brand-grey" />
+                    <div className="absolute inset-0">
+                      {file.preview ? (
+                        <img 
+                          src={file.preview} 
+                          alt="Preset Preview" 
+                          className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-1000"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
+                          <Camera size={48} className="text-brand-grey" />
+                        </div>
+                      )}
                     </div>
                     
                     {/* New Badge */}
@@ -256,7 +340,7 @@ export default function Presets() {
                     
                     {isAdmin && (
                       <button 
-                        onClick={() => removeFile(index)}
+                        onClick={() => removeFile(file)}
                         className="absolute top-4 right-4 z-20 w-8 h-8 bg-brand-black/80 text-brand-grey hover:text-brand-red rounded-full flex items-center justify-center backdrop-blur-sm transition-colors"
                       >
                         <X size={14} />
@@ -267,7 +351,7 @@ export default function Presets() {
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="overflow-hidden">
-                        <h4 className="text-brand-white font-serif italic text-lg leading-none mb-2 truncate" title={formatTitle(file.name)}>
+                        <h4 className="text-brand-white font-serif text-lg leading-none mb-2 truncate" title={formatTitle(file.name)}>
                           {formatTitle(file.name)}
                         </h4>
                         <p className="text-brand-grey text-[10px] uppercase tracking-[0.2em]">{file.size} • DNG PRESET</p>

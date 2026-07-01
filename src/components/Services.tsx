@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Camera, Image, Layers, Sparkles } from 'lucide-react';
+import { Camera, Image, Layers, Sparkles, Globe, Film, Share2 } from 'lucide-react';
 
 const services = [
   {
@@ -21,6 +21,21 @@ const services = [
     title: 'Fine Art Photography',
     description: 'Exclusive pieces designed for exhibition and luxury collectors.',
     icon: Image
+  },
+  {
+    title: 'Website Designing',
+    description: 'Crafting responsive, visually striking, and high-performance bespoke digital platforms tailored to elevate premium brands.',
+    icon: Globe
+  },
+  {
+    title: 'Video Editing & VFX',
+    description: 'Bringing motion to life through rhythm-driven editorial flows, cinematic color grading, and immersive sound design led by Khush Mehta.',
+    icon: Film
+  },
+  {
+    title: 'Social Media Management',
+    description: 'Fully curating, creating, and managing high-growth visual feeds and strategies to build a cohesive digital identity for your brand.',
+    icon: Share2
   }
 ];
 

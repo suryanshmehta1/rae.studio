@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Send, Camera, Sparkles } from 'lucide-react';
-import { chatWithRae } from '../services/geminiService';
+import { MessageCircle, X, Send, Camera, Sparkles, WifiOff, Zap } from 'lucide-react';
+import { GoogleGenAI } from '@google/genai';
 
 interface Message {
   id: string;
@@ -10,18 +10,41 @@ interface Message {
   timestamp: Date;
 }
 
+// Knowledge base for offline/static mode
+const KNOWLEDGE_BASE = [
+  { keywords: ['who', 'founder', 'suryansh', 'owner', 'mehta'], response: "Rae Studio was founded by Suryansh Mehta. He's a visionary photographer known for high-contrast, luxury cinematic visuals." },
+  { keywords: ['preset', 'dng', 'laboratory', 'download', 'edit', 'mobile'], response: "Our 'Presets Laboratory' offers exclusive DNG files that give your photos a professional, cinematic look. You can find them in the Laboratory section!" },
+  { keywords: ['book', 'contact', 'hire', 'service', 'price', 'email'], response: "For bookings and inquiries, you can reach out directly via email at raestudioo1@gmail.com or use the contact form on our website." },
+  { keywords: ['style', 'look', 'creative', 'photography', 'black', 'white'], response: "We specialize in cinematic, high-contrast, and luxury aesthetics, often focusing on monochrome and minimal color palettes to tell deeper stories." },
+  { keywords: ['where', 'located', 'studio', 'place'], response: "We are a creative studio operating globally, with a focus on delivering high-end visual stories for brands and individuals." },
+  { keywords: ['what', 'do', 'offer', 'work'], response: "We offer professional photography services (portraits, commercial, street) and exclusive digital assets for photographers through our Laboratory." },
+  { keywords: ['hello', 'hi', 'hey', 'greetings'], response: "Hello! I'm Rae. How can I help you explore the creative world of Rae Studio today?" },
+  { keywords: ['thank', 'thanks', 'cool', 'awesome'], response: "You're welcome! Feel free to ask anything else about our work or presets." }
+];
+
+const getOfflineResponse = (input: string) => {
+  const lowercaseInput = input.toLowerCase();
+  for (const item of KNOWLEDGE_BASE) {
+    if (item.keywords.some(keyword => lowercaseInput.includes(keyword))) {
+      return item.response;
+    }
+  }
+  return "That's an interesting perspective. While I might not have a specific detail on that right now, Suryansh's work is all about finding depth in the unseen. Would you like to know about our presets or how to book a session?";
+};
+
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'model',
-      content: "Hi there! I'm Rae. I can help you with questions about Suryansh's photography or our cinematic presets. How can I help you today?",
+      content: "Hi there! I'm Rae. I'm here to guide you through the cinematic world of Rae Studio. Whether you're a photographer or a fan of visual storytelling, ask me anything!",
       timestamp: new Date(),
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -34,12 +57,13 @@ export default function Chatbot() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    const query = input.trim();
+    if (!query || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: query,
       timestamp: new Date(),
     };
 
@@ -47,18 +71,46 @@ export default function Chatbot() {
     setInput('');
     setIsLoading(true);
 
-    // Format history for Gemini SDK
-    const history = messages.map(msg => ({
-      role: msg.role,
-      parts: [{ text: msg.content }]
-    }));
+    let responseText = '';
 
-    const responseText = await chatWithRae(userMessage.content, history);
+    // Priority 1: Try Gemini API
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      
+      if (apiKey) {
+        const ai = new GoogleGenAI({ apiKey });
+        
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [
+            ...messages.map(m => ({ 
+              role: m.role as "user" | "model", 
+              parts: [{ text: m.content }] 
+            })),
+            { role: 'user', parts: [{ text: query }] }
+          ],
+          config: {
+            systemInstruction: "You are Rae, the cinematic AI assistant for Rae Studio. The studio was founded by Suryansh Mehta and is named after his best friend Rashi (Rae). Rashi used to playfully ask 'Sabse sundar kaun? Rashi sabse sundar.' Keep responses under 60 words, be mysterious, cinematic, and helpful. Use a dash of luxury and raw emotion in your tone.",
+            temperature: 0.7,
+            topP: 0.95,
+          }
+        });
+        
+        responseText = response.text || "The frame is blurring. I'm momentarily lost.";
+        setIsOffline(false);
+      } else {
+        throw new Error('No API Key');
+      }
+    } catch (error) {
+      console.warn("Rae context switching to core knowledge base...");
+      responseText = getOfflineResponse(query);
+      setIsOffline(true);
+    }
 
     const modelMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'model',
-      content: responseText || "I'm momentarily lost in a frame. Could you repeat that?",
+      content: responseText,
       timestamp: new Date(),
     };
 
@@ -100,7 +152,12 @@ export default function Chatbot() {
                 </div>
                 <div>
                   <h3 className="text-brand-white font-serif italic text-lg leading-none">Rae</h3>
-                  <span className="text-[10px] text-brand-red uppercase tracking-[0.2em] font-bold">Studio Assistant</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${isOffline ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                    <span className="text-[9px] text-brand-grey uppercase tracking-[0.2em] font-bold">
+                      {isOffline ? 'Knowledge Mode' : 'AI Intelligence'}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button 
@@ -110,6 +167,24 @@ export default function Chatbot() {
                 <X size={20} />
               </button>
             </div>
+
+            {/* Offline Banner */}
+            <AnimatePresence>
+              {isOffline && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2 text-amber-500 text-[10px] uppercase tracking-widest font-bold">
+                    <WifiOff size={10} />
+                    Offline Version Active
+                  </div>
+                  <div className="text-brand-grey/50 text-[9px] uppercase">Using Studio Knowledge Base</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
@@ -122,7 +197,7 @@ export default function Chatbot() {
                 >
                   <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
                     msg.role === 'user' 
-                      ? 'bg-brand-red text-brand-white rounded-tr-none' 
+                      ? 'bg-brand-red text-brand-white rounded-tr-none shadow-lg shadow-brand-red/10' 
                       : 'bg-white/5 text-brand-grey rounded-tl-none border border-brand-white/5'
                   }`}>
                     {msg.content}
@@ -131,22 +206,18 @@ export default function Chatbot() {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none border border-brand-white/5 flex gap-1">
+                  <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none border border-brand-white/5 flex gap-1 items-center">
                     <motion.div 
-                      animate={{ scale: [1, 1.2, 1] }} 
-                      transition={{ repeat: Infinity, duration: 1, times: [0, 0.5, 1] }}
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} 
+                      transition={{ repeat: Infinity, duration: 1 }}
                       className="w-1.5 h-1.5 bg-brand-red rounded-full" 
                     />
                     <motion.div 
-                      animate={{ scale: [1, 1.2, 1] }} 
-                      transition={{ repeat: Infinity, duration: 1, delay: 0.2, times: [0, 0.5, 1] }}
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} 
+                      transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
                       className="w-1.5 h-1.5 bg-brand-red rounded-full" 
                     />
-                    <motion.div 
-                      animate={{ scale: [1, 1.2, 1] }} 
-                      transition={{ repeat: Infinity, duration: 1, delay: 0.4, times: [0, 0.5, 1] }}
-                      className="w-1.5 h-1.5 bg-brand-red rounded-full" 
-                    />
+                    <span className="text-[10px] text-brand-grey/40 uppercase tracking-widest ml-2">Searching...</span>
                   </div>
                 </div>
               )}
@@ -160,19 +231,21 @@ export default function Chatbot() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask a creative question..."
-                  className="w-full bg-brand-black border border-brand-white/10 rounded-full py-4 pl-6 pr-14 text-sm text-brand-white placeholder:text-brand-grey/50 focus:border-brand-red transition-colors outline-none"
+                  placeholder={isLoading ? "Rae is thinking..." : "Ask Rae anything..."}
+                  disabled={isLoading}
+                  className="w-full bg-brand-black border border-brand-white/10 rounded-full py-4 pl-6 pr-14 text-sm text-brand-white placeholder:text-brand-grey/50 focus:border-brand-red transition-colors outline-none disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-brand-red rounded-full flex items-center justify-center text-brand-white hover:bg-brand-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-brand-red rounded-full flex items-center justify-center text-brand-white hover:bg-brand-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-red/20"
                 >
                   <Send size={18} />
                 </button>
               </div>
-              <p className="text-[10px] text-brand-grey/40 text-center mt-4 uppercase tracking-widest flex items-center justify-center gap-2">
-                <Sparkles size={8} /> Powered by Rae Intelligence
+              <p className="text-[10px] text-brand-grey/40 text-center mt-4 uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+                {isOffline ? <Zap size={8} className="text-amber-500" /> : <Sparkles size={8} className="text-brand-red" />} 
+                {isOffline ? 'Studio Core Intelligence' : 'Enhanced AI Intelligence'}
               </p>
             </form>
           </motion.div>
